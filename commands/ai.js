@@ -36,7 +36,7 @@ module.exports = {
 
     const apis = [
       `https://zaikyoov3-up.up.railway.app/api/perplexity-sonar-pro?prompt=${encodeURIComponent(fullPrompt)}&uid=${senderId}&imgs=1&system=1`,
-      `https://api.pollinations.ai/text=${encodeURIComponent(fullPrompt)}`, // <== API Pollinations ici
+      `https://text.pollinations.ai/${encodeURIComponent(fullPrompt)}`, // API Pollinations en 2e position
       `https://zaikyoov3-up.up.railway.app/api/openai-gpt-4.1?prompt=${encodeURIComponent(fullPrompt)}&uid=${senderId}&imgs=1&system=1`,
       `https://zaikyoov3-up.up.railway.app/api/google-gemini-2.5-pro-preview?prompt=${encodeURIComponent(fullPrompt)}&uid=${senderId}&imgs=1&system=1`,
       `https://zaikyoov3-up.up.railway.app/api/01-ai-yi-large?prompt=${encodeURIComponent(fullPrompt)}&uid=${senderId}&system=1`,
@@ -46,7 +46,9 @@ module.exports = {
     for (const url of apis) {
       try {
         const { data } = await axios.get(url);
-        const response = data?.response || data?.result || data?.description || data?.reponse || data;
+
+        // Pour Pollinations, la réponse est un texte brut
+        const response = (typeof data === 'string') ? data : (data?.response || data?.result || data?.description || data?.reponse || data);
 
         if (response) {
           const fullResponse = typeof response === 'string' ? response : JSON.stringify(response);
