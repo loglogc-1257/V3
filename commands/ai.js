@@ -1,6 +1,9 @@
 const axios = require('axios');
 const { sendMessage } = require('../handles/sendMessage');
 
+// Historique des échanges par utilisateur
+const userHistory = {};
+
 module.exports = {
   name: 'ai',
   description: 'Interact with You-AI',
@@ -10,8 +13,7 @@ module.exports = {
   async execute(senderId, args, pageAccessToken) {
     const prompt = args.join(' ');
 
-    // Nouveau RP : Stanley Stawa
-    const RP = "";
+    const RP = ""; // Role Play optionnel
 
     if (!prompt) {
       return sendMessage(senderId, {
@@ -19,7 +21,22 @@ module.exports = {
       }, pageAccessToken);
     }
 
-    const fullPrompt = `${RP} : ${prompt}`;
+    // Initialiser l'historique de l'utilisateur
+    if (!userHistory[senderId]) {
+      userHistory[senderId] = [];
+    }
+
+    // Ajouter le message utilisateur
+    userHistory[senderId].push(`User: ${prompt}`);
+
+    // Garder au maximum 6 éléments (3 user + 3 AI)
+    if (userHistory[senderId].length > 6) {
+      while (userHistory[senderId].length > 6) {
+        userHistory[senderId].splice(0, 2); // Supprime la plus ancienne paire
+      }
+    }
+
+    const fullPrompt = `${RP}\n${userHistory[senderId].join('\n')}`;
 
     const apis = [
       `https://zaikyoov3-up.up.railway.app/api/perplexity-sonar-pro?prompt=${encodeURIComponent(fullPrompt)}&uid=${senderId}&imgs=1&system=1`,
@@ -35,24 +52,37 @@ module.exports = {
         const response = data?.response || data?.result || data?.description || data?.reponse || data;
 
         if (response) {
+          const fullResponse = response; // on conserve toute la réponse dans une seule variable
+
+          // Ajouter la réponse complète de l'IA dans l'historique
+          userHistory[senderId].push(`AI: ${fullResponse}`);
+
+          // Nettoyer si l'historique dépasse 6 éléments
+          if (userHistory[senderId].length > 6) {
+            while (userHistory[senderId].length > 6) {
+              userHistory[senderId].splice(0, 2);
+            }
+          }
+
+          // Diviser pour envoi sans couper l'historique
           const parts = [];
-          for (let i = 0; i < response.length; i += 1800) {
-            parts.push(response.substring(i, i + 1800));
+          for (let i = 0; i < fullResponse.length; i += 1800) {
+            parts.push(fullResponse.substring(i, i + 1800));
           }
 
           for (const part of parts) {
             await sendMessage(senderId, { text: part + ' 🪐' }, pageAccessToken);
           }
 
-          return; // Réponse réussie
+          return; // réponse envoyée avec succès
         }
       } catch (err) {
         console.warn(`❌ Échec de l'API : ${url} — ${err.message}`);
-        continue; // On passe à l’API suivante
+        continue;
       }
     }
 
-    // Aucune API n’a répondu
+    // Toutes les API ont échoué
     await sendMessage(senderId, {
       text: "😓 Toutes les IA sont injoignables pour le moment.\nRéessaie dans quelques instants."
     }, pageAccessToken);
