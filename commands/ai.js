@@ -63,7 +63,7 @@ module.exports = {
       }
 
       for (const part of parts) {
-        await sendMessage(senderId, { text: part + ' 🪐' }, pageAccessToken);
+        await sendMessage(senderId, { text: part + ' 🎃🚬' }, pageAccessToken);
       }
 
     } catch (err) {
