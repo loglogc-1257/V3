@@ -34,61 +34,42 @@ module.exports = {
       `https://api.nekorinn.my.id/ai/gemma-3-27b?text=${encodeURIComponent(fullPrompt)}`
     ];
 
+    // Lance toutes les requêtes avec timeout de 5s
     const fetchWithTimeout = (url) => {
-      return new Promise(async (resolve) => {
-        try {
-          const { data } = await axios.get(url, { timeout: 10000 }); // max 10 sec
-          const response = typeof data === 'string'
-            ? data
-            : (data?.response || data?.result || data?.description || data?.reponse || data);
-          if (response && typeof response === 'string' && response.trim().length > 0) {
-            resolve(response.trim());
-          } else {
-            resolve(null);
-          }
-        } catch (err) {
-          console.warn(`❌ ${url} — ${err.message}`);
-          resolve(null);
+      return axios.get(url, { timeout: 10000 }).then(({ data }) => {
+        const response = typeof data === 'string'
+          ? data
+          : (data?.response || data?.result || data?.description || data?.reponse || data);
+        if (response && typeof response === 'string' && response.trim().length > 0) {
+          return response.trim();
         }
+        throw new Error('Réponse vide');
       });
     };
 
-    // Lancer toutes les requêtes en parallèle
-    const promises = urls.map(fetchWithTimeout);
+    try {
+      const response = await Promise.any(
+        urls.map(url => fetchWithTimeout(url))
+      );
 
-    let resolved = false;
-
-    // Étape 1 : attendre 5 secondes pour une première réponse
-    const fastTry = Promise.any(
-      promises.map(p => Promise.race([
-        p,
-        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
-      ]))
-    ).catch(() => null);
-
-    let result = await fastTry;
-
-    // Étape 2 : si rien en 5s, attendre 5s de plus (au total 10s)
-    if (!result) {
-      const slowTry = Promise.any(promises).catch(() => null);
-      result = await slowTry;
-    }
-
-    if (result) {
-      userHistory[senderId].push(`AI: ${result}`);
+      // Enregistrement historique
+      userHistory[senderId].push(`AI: ${response}`);
       if (userHistory[senderId].length > 6) userHistory[senderId].splice(0, userHistory[senderId].length - 6);
 
+      // Envoi découpé
       const parts = [];
-      for (let i = 0; i < result.length; i += 1800) {
-        parts.push(result.substring(i, i + 1800));
+      for (let i = 0; i < response.length; i += 1800) {
+        parts.push(response.substring(i, i + 1800));
       }
 
       for (const part of parts) {
         await sendMessage(senderId, { text: part + ' 🪐' }, pageAccessToken);
       }
-    } else {
+
+    } catch (err) {
+      console.warn("❌ Aucune API n'a répondu à temps ou utilement.");
       await sendMessage(senderId, {
-        text: "😓 Aucune IA n'a répondu dans le temps imparti.\nRéessaie dans quelques instants."
+        text: "😓 Toutes les IA sont injoignables ou ont mis trop de temps.\nRéessaie dans quelques instants."
       }, pageAccessToken);
     }
   }
