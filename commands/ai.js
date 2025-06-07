@@ -114,7 +114,7 @@ const { data } = await axios.post("https://newapplication-70381.chipp.ai/api/cha
           const url = urlMatch ? urlMatch[0] : '';
 
           // Compose exactly as requested, no extra newlines
-          const formattedImageReply = `💬 | 𝙼𝚘𝚌𝚑𝚊 𝙰𝚒 ・───────────・ Generated Image: ${description}\n\n${url} ・──── >ᴗ< ────・`;
+          const formattedImageReply = `💬 | 👾🚬 ・───────────・ Generated Image: ${description}\n\n${url} ・──── >ᴗ< ────・`;
           await sendMessage(senderId, { text: formattedImageReply }, pageAccessToken);
           return;
         }
